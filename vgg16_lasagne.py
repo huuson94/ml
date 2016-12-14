@@ -1,17 +1,5 @@
 #!/usr/bin/env python
 
-"""
-Usage example employing Lasagne for digit recognition using the MNIST dataset.
-
-This example is deliberately structured as a long flat file, focusing on how
-to use Lasagne, instead of focusing on writing maximally modular and reusable
-code. It is used as the foundation for the introductory Lasagne tutorial:
-http://lasagne.readthedocs.org/en/latest/user/tutorial.html
-
-More in-depth examples and reproductions of paper results are maintained in
-a separate repository: https://github.com/Lasagne/Recipes
-"""
-
 from __future__ import print_function
 
 import sys
@@ -23,53 +11,153 @@ import theano
 import theano.tensor as T
 
 import lasagne
+import skimage.transform 
+from scipy import misc
 
-def build_vgg():
-    input_layer = lasagne.layers.InputLayer(shape=(None, 3, 224, 224), input_var=None, name="input")
-    conv11 = lasagne.layers.Conv2DLayer(input_layer, num_filters = 64, filter_size=(3,3), pad = 1)
-    conv12 = lasagne.layers.Conv2DLayer(conv11, num_filters = 64, filter_size=(3,3), pad = 1)
-    pool1 = lasagne.layers.MaxPool2DLayer(conv12, pool_size = 2)
+def load_data_file(class_file):
+    X_data = []
+    y_data = []
+    res_root = "/home/hs/workspace/python/ml/train_val_data/VOC2012/JPEGImages/"
+    with open(class_file) as f:
+        lines = f.readlines()
+    for index, line in enumerate(lines):
+        filename, class_name, class_no = line.split()
+        imarr = misc.imresize(misc.imread(res_root+ filename), (227, 227, 3)).astype(np.float32) 
+        #reshape to (3, 227, 227)
+        imarr_227 = np.swapaxes(np.swapaxes(imarr,0,1),1,2)    
+        reshape_img = np.swapaxes(np.swapaxes(imarr_227,1,2),0,1).reshape((3,227,227))
+        X_data.append(reshape_img)
+        y_data.append(class_no)
+    return np.array(X_data), np.array(y_data)
 
-    conv21 = lasagne.layers.Conv2DLayer(pool1, num_filters = 128, filter_size=(3,3), pad = 1)
-    conv22 = lasagne.layers.Conv2DLayer(conv21, num_filters = 128, filter_size=(3,3), pad = 1)
-    pool2 = lasagne.layers.MaxPool2DLayer(conv22, pool_size = 2)
+def load_dataset():
+    X_train, y_train = load_data_file("train_image_class.txt")
+    X_val, y_val = load_data_file("valid_image_class.txt")
+    return X_train, y_train, X_val, y_val
+def build_vgg(input_var):
+    network = lasagne.layers.InputLayer(shape=(None, 3, 227, 227), input_var=input_var, name="input")
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1)
+    network= lasagne.layers.MaxPool2DLayer(network, pool_size = 2)
 
-    conv31 = lasagne.layers.Conv2DLayer(pool2, num_filters = 256, filter_size=(3,3), pad = 1)
-    conv32 = lasagne.layers.Conv2DLayer(conv31, num_filters = 256, filter_size=(3,3), pad = 1)
-    conv33 = lasagne.layers.Conv2DLayer(conv32, num_filters = 256, filter_size=(3,3), pad = 1)
-    pool3 = lasagne.layers.MaxPool2DLayer(conv33, pool_size = 2)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 128, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 128, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2)
 
-    conv41 = lasagne.layers.Conv2DLayer(pool3, num_filters = 512, filter_size=(3,3), pad = 1)
-    conv42 = lasagne.layers.Conv2DLayer(conv41, num_filters = 512, filter_size=(3,3), pad = 1)
-    conv43 = lasagne.layers.Conv2DLayer(conv42, num_filters = 512, filter_size=(3,3), pad = 1)
-    pool4 = lasagne.layers.MaxPool2DLayer(conv43, pool_size = 2)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2)
 
-    conv51 = lasagne.layers.Conv2DLayer(pool4, num_filters = 512, filter_size=(3,3), pad = 1)
-    conv52 = lasagne.layers.Conv2DLayer(conv51, num_filters = 512, filter_size=(3,3), pad = 1)
-    conv53 = lasagne.layers.Conv2DLayer(conv52, num_filters = 512, filter_size=(3,3), pad = 1)
-    pool5 = lasagne.layers.MaxPool2DLayer(conv53, pool_size = 2)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2)
 
-    fc6 = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(pool5, p=.5), 
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2)
+
+    network = lasagne.layers.DenseLayer(
+            lasagne.layers.dropout(network, p=.5), 
             num_units = 4096, 
             nonlinearity=lasagne.nonlinearities.softmax 
             ) 
-    fc7 = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(pool5, p=.5), 
+    network = lasagne.layers.DenseLayer(
+            lasagne.layers.dropout(network, p=.5), 
             num_units = 4096, 
             nonlinearity=lasagne.nonlinearities.softmax 
             ) 
-    fc8 = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(pool5, p=.5), 
+    network = lasagne.layers.DenseLayer(
+            lasagne.layers.dropout(network, p=.5), 
             num_units = 1000, 
             nonlinearity=lasagne.nonlinearities.softmax 
             ) 
 
-    return fc8
+    return network
+
+def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
+    assert len(inputs) == len(targets)
+    if shuffle:
+        indices = np.arange(len(inputs))
+        np.random.shuffle(indices)
+    for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
+        if shuffle:
+            excerpt = indices[start_idx:start_idx + batchsize]
+        else:
+            excerpt = slice(start_idx, start_idx + batchsize)
+        yield inputs[excerpt], targets[excerpt]
+
 
 
 def main():
-    network = build_vgg()
+    num_epochs = 2
+    #res_root = '/home/hs/workspace/python/ml/train_val_data/VOC2012/'
+    #data_path = misc.imread(res_root+"JPEGImages/2007_000027.jpg")
+    #data = skimage.transform.resize(data_path, (3, 227, 227))
+    #print(data.shape)
+    X_train, y_train, X_val, y_val = load_dataset()
+    print("Building net...")
+    print("Build done")
+
+    print("Create train variables")
+    input_var = T.tensor4('inputs')
+    target_var = T.ivector('targets')
+    network = build_vgg(input_var)
+    prediction = lasagne.layers.get_output(network)
+    loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
+    loss = loss.mean()
+
+    params = lasagne.layers.get_all_params(network, trainable=True)
+    updates = lasagne.updates.adam(
+            loss, params, learning_rate=0.01)
+
+    test_prediction = lasagne.layers.get_output(network, deterministic=True)
+    test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var)
+    test_loss = test_loss.mean()
+    test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),
+                      dtype=theano.config.floatX)
+
+    train_fn = theano.function([input_var, target_var], loss, updates=updates)
+    val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
+    print("Done creating train variables")
+    
+    print("Starting traninig...")
+
+    for epoche in range(num_epochs):
+        train_err = 0
+        train_batches = 0
+        start_time = time.time()
+        for batch in iterate_minibatches(X_train, y_train, 50, shuffle=True):
+            inputs, targets = batch
+            print(inputs.shape)
+            print(type(inputs))
+            print(targets.shape)
+            print(type(targets))
+            print(type(train_fn(inputs, targets)))
+            train_err += train_fn(inputs, targets)
+            train_batches += 1
+
+    # And a full pass over the validation data:
+        val_err = 0
+        val_acc = 0
+        val_batches = 0
+        for batch in iterate_minibatches(X_val, y_val, 50, shuffle=False):
+            inputs, targets = batch
+            err, acc = val_fn(inputs, targets)
+            val_err += err
+            val_acc += acc
+            val_batches += 1
+
+        # Then we print the results for this epoch:
+        print("Epoch {} of {} took {:.3f}s".format(
+            epoch + 1, num_epochs, time.time() - start_time))
+        print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
+        print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
+        print("  validation accuracy:\t\t{:.2f} %".format(
+            val_acc / val_batches * 100))
+
 
 if __name__ == '__main__':
     main()
