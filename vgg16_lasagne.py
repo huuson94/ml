@@ -14,20 +14,29 @@ import lasagne
 import skimage.transform 
 from scipy import misc
 
+MEAN_VALUE = np.array([103.939, 116.779, 123.68])   # BGR
+def preprocess(img):
+    print(type(img))
+    print(img.shape)
+    # img is (channels, height, width), values are 0-255
+    img = img[::-1]  # switch to BGR
+    img -= MEAN_VALUE
+    return img
+
 def load_data_file(class_file):
     X_data = []
     y_data = []
-    res_root = "/home/hs/workspace/python/ml/train_val_data/VOC2012/JPEGImages/"
+    res_root = "/home/oanhnt/sonnh/src/ml/VOCdevkit/VOC2012/JPEGImages/"
     with open(class_file) as f:
         lines = f.readlines()
     for index, line in enumerate(lines):
         filename, class_name, class_no = line.split()
-        imarr = misc.imresize(misc.imread(res_root+ filename), (227, 227, 3)).astype(np.float32) 
-        #reshape to (3, 227, 227)
-        imarr_227 = np.swapaxes(np.swapaxes(imarr,0,1),1,2)    
-        reshape_img = np.swapaxes(np.swapaxes(imarr_227,1,2),0,1).reshape((3,227,227))
-        X_data.append(reshape_img)
-        y_data.append(class_no)
+        imarr = misc.imresize(misc.imread(res_root+ filename), (224, 224, 3)).astype(np.float32) 
+        #reshape to (3, 224, 224)
+        imarr_224 = np.swapaxes(np.swapaxes(imarr,0,1),1,2)    
+        reshape_img = np.swapaxes(np.swapaxes(imarr_224,1,2),0,1).reshape((3,224,224))
+        X_data.append(preprocess(reshape_img))
+        y_data.append(int(class_no))
     return np.array(X_data), np.array(y_data)
 
 def load_dataset():
@@ -35,7 +44,7 @@ def load_dataset():
     X_val, y_val = load_data_file("valid_image_class.txt")
     return X_train, y_train, X_val, y_val
 def build_vgg(input_var):
-    network = lasagne.layers.InputLayer(shape=(None, 3, 227, 227), input_var=input_var, name="input")
+    network = lasagne.layers.InputLayer(shape=(None, 3, 224, 224), input_var=input_var, name="input")
     network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1)
     network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1)
     network= lasagne.layers.MaxPool2DLayer(network, pool_size = 2)
@@ -62,12 +71,12 @@ def build_vgg(input_var):
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5), 
             num_units = 4096, 
-            nonlinearity=lasagne.nonlinearities.softmax 
+            nonlinearity=lasagne.nonlinearities.rectify
             ) 
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5), 
             num_units = 4096, 
-            nonlinearity=lasagne.nonlinearities.softmax 
+            nonlinearity=lasagne.nonlinearities.rectify
             ) 
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5), 
@@ -92,18 +101,14 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 
 
 def main():
-    num_epochs = 2
-    #res_root = '/home/hs/workspace/python/ml/train_val_data/VOC2012/'
-    #data_path = misc.imread(res_root+"JPEGImages/2007_000027.jpg")
-    #data = skimage.transform.resize(data_path, (3, 227, 227))
-    #print(data.shape)
+    num_epochs = 5
     X_train, y_train, X_val, y_val = load_dataset()
     print("Building net...")
     print("Build done")
 
     print("Create train variables")
     input_var = T.tensor4('inputs')
-    target_var = T.ivector('targets')
+    target_var = T.lvector('targets')
     network = build_vgg(input_var)
     prediction = lasagne.layers.get_output(network)
     loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
@@ -125,17 +130,12 @@ def main():
     
     print("Starting traninig...")
 
-    for epoche in range(num_epochs):
+    for epoch in range(num_epochs):
         train_err = 0
         train_batches = 0
         start_time = time.time()
         for batch in iterate_minibatches(X_train, y_train, 50, shuffle=True):
             inputs, targets = batch
-            print(inputs.shape)
-            print(type(inputs))
-            print(targets.shape)
-            print(type(targets))
-            print(type(train_fn(inputs, targets)))
             train_err += train_fn(inputs, targets)
             train_batches += 1
 

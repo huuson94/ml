@@ -6,16 +6,16 @@ CLASSES = ["aeroplane", "bicycle", "boat", "bottle", "bus", "car", "cat",
         "potted" "plant", "sheep", "train", "tvmonitor", "bird", "sofa"]
 
 START_TRAIN_NUMBER = 0 
-END_TRAIN_NUMBER = 99 
-START_VALID_NUMBER = 100
-END_VALID_NUMBER = 199
+END_TRAIN_NUMBER = 199
+START_VALID_NUMBER = 200
+END_VALID_NUMBER = 399
 
 def parse_xml(file_path):
     root_node = parser.parse(file_path).getroot()
     class_name = root_node.find("object").find("name").text
     return root_node.find("filename").text + "\t" + class_name + "\t"+ str(CLASSES.index(class_name)) + "\n"
 
-res_root = '/home/hs/workspace/python/ml/train_val_data/VOC2012/Annotations/'
+res_root = '/home/oanhnt/sonnh/src/ml/VOCdevkit/VOC2012/Annotations/'
 allfiles = os.listdir(res_root)
 allfiles.sort()
 
