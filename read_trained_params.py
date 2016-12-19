@@ -1,8 +1,10 @@
 import pprint, pickle
 
-pkl_file = open('vgg16.pkl', 'rb')
+def read_params():
 
-data1 = pickle.load(pkl_file)
-pprint.pprint(data1['param values'][6].shape)
+    pkl_file = open('vgg16.pkl', 'rb')
+    data1 = pickle.load(pkl_file)
+    pprint.pprint(data1['param values'][0].shape)
+    pkl_file.close()
 
-pkl_file.close()
+read_params()
