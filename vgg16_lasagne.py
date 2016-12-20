@@ -14,6 +14,9 @@ import lasagne
 import skimage.transform 
 from scipy import misc
 
+from read_trained_params import  read_params
+
+
 MEAN_VALUE = np.array([103.939, 116.779, 123.68])   # BGR
 DEV_PATH = '/home/hs/workspace/python/ml/train_val_data/VOC2012/JPEGImages/'
 SERVER_PATH = '/home/oanhnt/sonnh/src/ml/VOCdevkit/VOC2012/JPEGImages/'
@@ -50,41 +53,46 @@ def load_dataset():
     X_val, y_val = load_data_file("valid_image_class.txt")
     return X_train, y_train, X_val, y_val
 def build_vgg(input_var):
+    trained_params = read_params()
     network = lasagne.layers.InputLayer(shape=(None, 3, 224, 224), input_var=input_var, name="input")
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1, name="conv1_1")
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1, name="conv1_2")
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1, name="conv1_1", W = trained_params[0], b = trained_params[1])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1, name="conv1_2", W = trained_params[2], b = trained_params[3])
     network= lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool1")
 
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 128, filter_size=(3,3), pad = 1)
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 128, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 128, filter_size=(3,3), pad = 1, W = trained_params[4], b = trained_params[5])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 128, filter_size=(3,3), pad = 1, W = trained_params[6], b = trained_params[7])
     network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool2")
 
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1)
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1)
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1, W = trained_params[8], b = trained_params[9])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1, W = trained_params[10], b = trained_params[11])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1, W = trained_params[12], b = trained_params[13])
     network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool3")
 
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1)
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1)
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = trained_params[14], b = trained_params[15])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = trained_params[16], b = trained_params[17])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = trained_params[18], b = trained_params[19])
     network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool4")
 
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1)
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1)
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = trained_params[20], b = trained_params[21])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = trained_params[22], b = trained_params[23])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = trained_params[24], b = trained_params[25])
     network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool5")
 
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5), 
             num_units = 4096, 
             nonlinearity=lasagne.nonlinearities.rectify, 
-            name = "fc6"
+            name = "fc6",
+            W = trained_params[26],
+            b = trained_params[27]
             ) 
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5), 
             num_units = 4096, 
             nonlinearity=lasagne.nonlinearities.rectify,
-            name = "fc7"
+            name = "fc7",
+            W = trained_params[28],
+            b = trained_params[29]
             ) 
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=.5), 
@@ -109,20 +117,22 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 
 
 def main():
-    num_epochs = 5
+    num_epochs = 50
     X_train, y_train, X_val, y_val = load_dataset()
+    input_var = T.tensor4('inputs')
+    target_var = T.lvector('targets')
     print("Building net...")
+    network = build_vgg(input_var)
     print("Build done")
 
     print("Create train variables")
-    input_var = T.tensor4('inputs')
-    target_var = T.lvector('targets')
-    network = build_vgg(input_var)
+
     prediction = lasagne.layers.get_output(network)
     loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
     loss = loss.mean()
 
     params = lasagne.layers.get_all_params(network, trainable=True)
+    #params = params[:-12]
     updates = lasagne.updates.adam(
             loss, params, learning_rate=0.01)
 
@@ -142,7 +152,7 @@ def main():
         train_err = 0
         train_batches = 0
         start_time = time.time()
-        for batch in iterate_minibatches(X_train, y_train, 50, shuffle=True):
+        for batch in iterate_minibatches(X_train, y_train, 10, shuffle=True):
             inputs, targets = batch
             train_err += train_fn(inputs, targets)
             train_batches += 1
@@ -151,7 +161,7 @@ def main():
         val_err = 0
         val_acc = 0
         val_batches = 0
-        for batch in iterate_minibatches(X_val, y_val, 50, shuffle=False):
+        for batch in iterate_minibatches(X_val, y_val, 10, shuffle=False):
             inputs, targets = batch
             err, acc = val_fn(inputs, targets)
             val_err += err
