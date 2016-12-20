@@ -15,6 +15,8 @@ import skimage.transform
 from scipy import misc
 
 MEAN_VALUE = np.array([103.939, 116.779, 123.68])   # BGR
+DEV_PATH = '/home/hs/workspace/python/ml/train_val_data/VOC2012/JPEGImages/'
+SERVER_PATH = '/home/oanhnt/sonnh/src/ml/VOCdevkit/VOC2012/JPEGImages/'
 def preprocess(img):
     # img is (channels, height, width), values are 0-255
     img = img[::-1]  # switch to BGR
@@ -26,17 +28,21 @@ def preprocess(img):
 def load_data_file(class_file):
     X_data = []
     y_data = []
-    res_root = "/home/oanhnt/sonnh/src/ml/VOCdevkit/VOC2012/JPEGImages/"
+    res_root = DEV_PATH
     with open(class_file) as f:
         lines = f.readlines()
     for index, line in enumerate(lines):
         filename, class_name, class_no = line.split()
         imarr = misc.imresize(misc.imread(res_root+ filename), (224, 224, 3)).astype(np.float32) 
+        misc.toimage(imarr).show()
         #reshape to (3, 224, 224)
         imarr_224 = np.swapaxes(np.swapaxes(imarr,0,1),1,2)    
         reshape_img = np.swapaxes(np.swapaxes(imarr_224,1,2),0,1).reshape((3,224,224))
         X_data.append(preprocess(reshape_img))
         y_data.append(int(class_no))
+        print(class_name)
+        c = raw_input("press enter to continue")
+    exit(0)
     return np.array(X_data), np.array(y_data)
 
 def load_dataset():
