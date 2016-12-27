@@ -14,12 +14,16 @@ import lasagne
 import skimage.transform 
 from scipy import misc
 
-from read_trained_params import  read_params
+#from read_trained_params import  read_params
 
 
 MEAN_VALUE = np.array([103.939, 116.779, 123.68])   # BGR
-DEV_PATH = '/home/hs/workspace/python/ml/train_val_data/VOC2012/JPEGImages/'
-SERVER_PATH = '/home/oanhnt/sonnh/src/ml/VOCdevkit/VOC2012/JPEGImages/'
+DEV_PATH = '/home/hs/workspace/python/ml/101_ObjectCategories'
+SERVER_PATH = '/home/oanhnt/sonnh/src/ml/101_ObjectCategories'
+TRAIN_VALID_RATIO = 0.5
+
+classes_name = []
+
 def preprocess(img):
     # img is (channels, height, width), values are 0-255
     img = img[::-1]  # switch to BGR
@@ -28,30 +32,56 @@ def preprocess(img):
     img[2] -= MEAN_VALUE[2]
     return img
 
-def load_data_file(class_file):
+def load_data_folder():
     X_data = []
     y_data = []
+    X_val = []
+    y_val = []
+
     res_root = DEV_PATH
-    with open(class_file) as f:
-        lines = f.readlines()
-    for index, line in enumerate(lines):
-        filename, class_name, class_no = line.split()
-        imarr = misc.imresize(misc.imread(res_root+ filename), (224, 224, 3)).astype(np.float32) 
-        misc.toimage(imarr).show()
-        #reshape to (3, 224, 224)
-        imarr_224 = np.swapaxes(np.swapaxes(imarr,0,1),1,2)    
-        reshape_img = np.swapaxes(np.swapaxes(imarr_224,1,2),0,1).reshape((3,224,224))
-        X_data.append(preprocess(reshape_img))
-        y_data.append(int(class_no))
-        print(class_name)
-        c = raw_input("press enter to continue")
-    exit(0)
-    return np.array(X_data), np.array(y_data)
+    
+    dirs = os.listdir(res_root)
+
+    for dir in dirs:
+        class_name = dir
+        classes_name.append(class_name)
+        
+        files = os.listdir(res_root + "/" + dir)
+        train_sample_count_limit = len(files) * TRAIN_VALID_RATIO - 1
+
+        for index, file in enumerate(files):
+            if(index > train_sample_count_limit):
+                X_train.append(load_data_from_file(res_root + "/" + dir + "/" + file))
+                y_train.append(classes_name.index(class_name))
+            else:
+                X_val.append(load_data_from_file(res_root + "/" + dir + "/" + file))
+                y_val.append(classes_name.index(class_name))
+
+    return np.array(X_data), np.array(y_data), np.array(X_val), np.array(y_val)
+
+def load_data_from_file(file_path, height_crop=224, width_crop=224):
+    img = misc.imread(file_path)
+    height, width, color = img.shape
+    #if height < height_crop or width < width_crop then scale
+    if(height < height_crop ):
+        img = misc.imresize(img, (height_crop, width_crop), interp='nearest')
+    if(width < width_crop):
+        img = misc.imresize(img, (height_crop, width_crop), interp='nearest')
+    
+    #center crop 
+    height, width, color = img.shape
+    startX = width//2 - width_crop//2
+    startY = height//2 - height_crop//2
+    cropped_img = img[startY:startY+height_crop, startX:startX+width_crop,:]
+    #reshape to (3, 224, 224)
+    BGR_img = np.swapaxes(np.swapaxes(cropped_img,0,1),1,2)    
+    reshape_img = np.swapaxes(np.swapaxes(BGR_img,1,2),0,1).reshape((3,224,224))
+    return preprocess(reshape_img)
 
 def load_dataset():
-    X_train, y_train = load_data_file("train_image_class.txt")
-    X_val, y_val = load_data_file("valid_image_class.txt")
+    X_train, y_train = load_data_folder()
     return X_train, y_train, X_val, y_val
+load_dataset()
 def build_vgg(input_var):
     trained_params = read_params()
     network = lasagne.layers.InputLayer(shape=(None, 3, 224, 224), input_var=input_var, name="input")
@@ -177,6 +207,6 @@ def main():
             val_acc / val_batches * 100))
 
 
-if __name__ == '__main__':
-    main()
+#if __name__ == '__main__':
+#    main()
 
