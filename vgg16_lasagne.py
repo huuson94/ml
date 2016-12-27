@@ -14,10 +14,10 @@ import lasagne
 import skimage.transform 
 from scipy import misc
 
-#from read_trained_params import  read_params
+from read_trained_params import  read_params
 
 
-MEAN_VALUE = np.array([103.939, 116.779, 123.68])   # BGR
+MEAN_VALUE = np.array([103.939, 116.779, 123.68], dtype="int32")   # BGR
 DEV_PATH = '/home/hs/workspace/python/ml/101_ObjectCategories'
 SERVER_PATH = '/home/oanhnt/sonnh/src/ml/101_ObjectCategories'
 TRAIN_VALID_RATIO = 0.5
@@ -33,12 +33,12 @@ def preprocess(img):
     return img
 
 def load_data_folder():
-    X_data = []
-    y_data = []
+    X_train = []
+    y_train = []
     X_val = []
     y_val = []
 
-    res_root = DEV_PATH
+    res_root = SERVER_PATH
     
     dirs = os.listdir(res_root)
 
@@ -50,18 +50,27 @@ def load_data_folder():
         train_sample_count_limit = len(files) * TRAIN_VALID_RATIO - 1
 
         for index, file in enumerate(files):
-            if(index > train_sample_count_limit):
+            if(index < train_sample_count_limit):
                 X_train.append(load_data_from_file(res_root + "/" + dir + "/" + file))
                 y_train.append(classes_name.index(class_name))
             else:
                 X_val.append(load_data_from_file(res_root + "/" + dir + "/" + file))
                 y_val.append(classes_name.index(class_name))
 
-    return np.array(X_data), np.array(y_data), np.array(X_val), np.array(y_val)
+    return np.array(X_train), np.array(y_train), np.array(X_val), np.array(y_val)
 
 def load_data_from_file(file_path, height_crop=224, width_crop=224):
     img = misc.imread(file_path)
+    if(len(img.shape) == 2):
+        height, width= img.shape
+        new_arr = np.zeros((height, width, 3))
+        new_arr[:,:,0] = img
+        new_arr[:,:,1] = img
+        new_arr[:,:,2] = img
+        img = new_arr
+
     height, width, color = img.shape
+
     #if height < height_crop or width < width_crop then scale
     if(height < height_crop ):
         img = misc.imresize(img, (height_crop, width_crop), interp='nearest')
@@ -79,9 +88,9 @@ def load_data_from_file(file_path, height_crop=224, width_crop=224):
     return preprocess(reshape_img)
 
 def load_dataset():
-    X_train, y_train = load_data_folder()
+    X_train, y_train, X_val, y_val = load_data_folder()
     return X_train, y_train, X_val, y_val
-load_dataset()
+
 def build_vgg(input_var):
     trained_params = read_params()
     network = lasagne.layers.InputLayer(shape=(None, 3, 224, 224), input_var=input_var, name="input")
@@ -148,19 +157,17 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 
 def main():
     num_epochs = 50
+    print("Load dataset...") 
     X_train, y_train, X_val, y_val = load_dataset()
     input_var = T.tensor4('inputs')
     target_var = T.lvector('targets')
     print("Building net...")
     network = build_vgg(input_var)
-    print("Build done")
-
     print("Create train variables")
 
     prediction = lasagne.layers.get_output(network)
     loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
     loss = loss.mean()
-
     params = lasagne.layers.get_all_params(network, trainable=True)
     #params = params[:-12]
     updates = lasagne.updates.adam(
@@ -174,10 +181,8 @@ def main():
 
     train_fn = theano.function([input_var, target_var], loss, updates=updates)
     val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
-    print("Done creating train variables")
     
-    print("Starting traninig...")
-
+    print("Starting tranining...")
     for epoch in range(num_epochs):
         train_err = 0
         train_batches = 0
@@ -186,7 +191,7 @@ def main():
             inputs, targets = batch
             train_err += train_fn(inputs, targets)
             train_batches += 1
-
+        print("test")
     # And a full pass over the validation data:
         val_err = 0
         val_acc = 0
@@ -207,6 +212,6 @@ def main():
             val_acc / val_batches * 100))
 
 
-#if __name__ == '__main__':
-#    main()
+if __name__ == '__main__':
+    main()
 
