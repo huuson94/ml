@@ -21,6 +21,7 @@ MEAN_VALUE = np.array([103.939, 116.779, 123.68], dtype="int32")   # BGR
 DEV_PATH = '/home/hs/workspace/python/ml/101_ObjectCategories'
 SERVER_PATH = '/home/oanhnt/sonnh/src/ml/101_ObjectCategories'
 TRAIN_VALID_RATIO = 0.5
+SAMPLE_NUMBER = 100
 
 classes_name = []
 
@@ -57,7 +58,7 @@ def load_data_folder():
                 X_val.append(load_data_from_file(res_root + "/" + dir + "/" + file))
                 y_val.append(classes_name.index(class_name))
 
-    return np.array(X_train), np.array(y_train), np.array(X_val), np.array(y_val)
+    return np.array(X_train[0:SAMPLE_NUMBER], dtype="float32"), np.array(y_train[0:SAMPLE_NUMBER], dtype="int32"), np.array(X_val[0:SAMPLE_NUMBER], dtype="float32"), np.array(y_val[0:SAMPLE_NUMBER], dtype="int32")
 
 def load_data_from_file(file_path, height_crop=224, width_crop=224):
     img = misc.imread(file_path)
@@ -118,7 +119,7 @@ def build_vgg(input_var):
     network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool5")
 
     network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5), 
+            lasagne.layers.dropout(network, p=0.5), 
             num_units = 4096, 
             nonlinearity=lasagne.nonlinearities.rectify, 
             name = "fc6",
@@ -126,7 +127,7 @@ def build_vgg(input_var):
             b = trained_params[27]
             ) 
     network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5), 
+            lasagne.layers.dropout(network, p=0.5), 
             num_units = 4096, 
             nonlinearity=lasagne.nonlinearities.rectify,
             name = "fc7",
@@ -134,7 +135,7 @@ def build_vgg(input_var):
             b = trained_params[29]
             ) 
     network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5), 
+            lasagne.layers.dropout(network, p=0.5), 
             num_units = 1000, 
             nonlinearity=lasagne.nonlinearities.softmax 
             ) 
@@ -160,7 +161,7 @@ def main():
     print("Load dataset...") 
     X_train, y_train, X_val, y_val = load_dataset()
     input_var = T.tensor4('inputs')
-    target_var = T.lvector('targets')
+    target_var = T.ivector('targets')
     print("Building net...")
     network = build_vgg(input_var)
     print("Create train variables")
@@ -169,7 +170,7 @@ def main():
     loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
     loss = loss.mean()
     params = lasagne.layers.get_all_params(network, trainable=True)
-    #params = params[:-12]
+    #params = params[-2:]
     updates = lasagne.updates.adam(
             loss, params, learning_rate=0.01)
 
@@ -190,8 +191,9 @@ def main():
         for batch in iterate_minibatches(X_train, y_train, 10, shuffle=True):
             inputs, targets = batch
             train_err += train_fn(inputs, targets)
+            print("Train batch {} took {:.3f}s, loss:{:.6f}".format(
+                 train_batches + 1, time.time() - start_time, train_err / (train_batches + 1)))
             train_batches += 1
-        print("test")
     # And a full pass over the validation data:
         val_err = 0
         val_acc = 0
@@ -201,6 +203,8 @@ def main():
             err, acc = val_fn(inputs, targets)
             val_err += err
             val_acc += acc
+            print("Valid batch {} took {:.3f}s".format(
+                 val_batches+ 1, time.time() - start_time))
             val_batches += 1
 
         # Then we print the results for this epoch:
