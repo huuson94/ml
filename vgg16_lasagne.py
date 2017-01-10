@@ -15,13 +15,14 @@ import skimage.transform
 from scipy import misc
 
 from read_trained_params import  read_params
+from read_trained_params import  save_params
 
 
 MEAN_VALUE = np.array([103.939, 116.779, 123.68], dtype="int32")   # BGR
 DEV_PATH = '/home/hs/workspace/python/ml/101_ObjectCategories'
 SERVER_PATH = '/home/oanhnt/sonnh/src/ml/101_ObjectCategories'
-TRAIN_VALID_RATIO = 0.5
-SAMPLE_NUMBER = 100
+TRAIN_VALID_RATIO = 0.7
+#SAMPLE_NUMBER = 200
 
 classes_name = []
 
@@ -58,7 +59,7 @@ def load_data_folder():
                 X_val.append(load_data_from_file(res_root + "/" + dir + "/" + file))
                 y_val.append(classes_name.index(class_name))
 
-    return np.array(X_train[0:SAMPLE_NUMBER], dtype="float32"), np.array(y_train[0:SAMPLE_NUMBER], dtype="int32"), np.array(X_val[0:SAMPLE_NUMBER], dtype="float32"), np.array(y_val[0:SAMPLE_NUMBER], dtype="int32")
+    return np.array(X_train, dtype="float32"), np.array(y_train, dtype="int32"), np.array(X_val, dtype="float32"), np.array(y_val, dtype="int32")
 
 def load_data_from_file(file_path, height_crop=224, width_crop=224):
     img = misc.imread(file_path)
@@ -157,7 +158,7 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 
 
 def main():
-    num_epochs = 50
+    num_epochs = 500
     print("Load dataset...") 
     X_train, y_train, X_val, y_val = load_dataset()
     input_var = T.tensor4('inputs')
@@ -188,7 +189,10 @@ def main():
         train_err = 0
         train_batches = 0
         start_time = time.time()
-        for batch in iterate_minibatches(X_train, y_train, 10, shuffle=True):
+        if(epoch != 0 and (epoch % 20) == 0):
+            save_params(params)
+
+        for batch in iterate_minibatches(X_train, y_train, 20, shuffle=True):
             inputs, targets = batch
             train_err += train_fn(inputs, targets)
             print("Train batch {} took {:.3f}s, loss:{:.6f}".format(
@@ -198,7 +202,7 @@ def main():
         val_err = 0
         val_acc = 0
         val_batches = 0
-        for batch in iterate_minibatches(X_val, y_val, 10, shuffle=False):
+        for batch in iterate_minibatches(X_val, y_val, 20, shuffle=False):
             inputs, targets = batch
             err, acc = val_fn(inputs, targets)
             val_err += err
@@ -214,6 +218,9 @@ def main():
         print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
         print("  validation accuracy:\t\t{:.2f} %".format(
             val_acc / val_batches * 100))
+
+    print("Trainning done")
+    save_params(params)
 
 
 if __name__ == '__main__':
