@@ -22,7 +22,7 @@ MEAN_VALUE = np.array([103.939, 116.779, 123.68], dtype="int32")   # BGR
 DEV_PATH = '/home/hs/workspace/python/ml/101_ObjectCategories'
 SERVER_PATH = '/home/oanhnt/sonnh/src/ml/101_ObjectCategories'
 TRAIN_VALID_RATIO = 0.7
-#SAMPLE_NUMBER = 200
+#SAMPLE_NUMBER = 9000
 
 classes_name = []
 
@@ -171,9 +171,9 @@ def main():
     loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
     loss = loss.mean()
     params = lasagne.layers.get_all_params(network, trainable=True)
-    #params = params[-2:]
+    params = params[-2:]
     updates = lasagne.updates.adam(
-            loss, params, learning_rate=0.01)
+            loss, params, learning_rate=1e-3)
 
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
     test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var)
@@ -192,7 +192,7 @@ def main():
         if(epoch != 0 and (epoch % 20) == 0):
             save_params(params)
 
-        for batch in iterate_minibatches(X_train, y_train, 20, shuffle=True):
+        for batch in iterate_minibatches(X_train, y_train, 200, shuffle=True):
             inputs, targets = batch
             train_err += train_fn(inputs, targets)
             print("Train batch {} took {:.3f}s, loss:{:.6f}".format(
@@ -202,13 +202,13 @@ def main():
         val_err = 0
         val_acc = 0
         val_batches = 0
-        for batch in iterate_minibatches(X_val, y_val, 20, shuffle=False):
+        for batch in iterate_minibatches(X_val, y_val, 200, shuffle=False):
             inputs, targets = batch
             err, acc = val_fn(inputs, targets)
             val_err += err
             val_acc += acc
-            print("Valid batch {} took {:.3f}s".format(
-                 val_batches+ 1, time.time() - start_time))
+            print("Valid batch {} took {:.3f}s, loss:{:.6f}".format(
+                 val_batches+ 1, time.time() - start_time), val_err/val_batches)
             val_batches += 1
 
         # Then we print the results for this epoch:
