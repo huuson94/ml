@@ -17,6 +17,11 @@ from scipy import misc
 from read_trained_params import  read_params
 from read_trained_params import  save_params
 
+from visualize import plot_loss
+from visualize import plot_conv1_weights
+
+
+
 
 MEAN_VALUE = np.array([103.939, 116.779, 123.68], dtype="int32")   # BGR
 DEV_PATH = '/home/hs/workspace/python/ml/101_ObjectCategories'
@@ -167,11 +172,21 @@ def main():
     network = build_vgg(input_var)
     print("Create train variables")
 
+
+    time_stamp=time.strftime("%y%m%d%H%M%S", time.localtime()) 
+    snapshot_root = 'snapshot_models/'
+    snapshot_name = 'vgg16_lasgane'+ time_stamp
+
+
     prediction = lasagne.layers.get_output(network)
     loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
     loss = loss.mean()
     params = lasagne.layers.get_all_params(network, trainable=True)
     params = params[-2:]
+
+
+    learning_rate_init = 1e-3
+    learning_rate = theano.shared(np.array(learning_rate_init, dtype=theano.config.floatX))
     updates = lasagne.updates.adam(
             loss, params, learning_rate=1e-3)
 
@@ -185,6 +200,14 @@ def main():
     val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
     
     print("Starting tranining...")
+    training_history = {}
+    training_history['iter_training_loss'] = []
+    training_history['iter_validation_loss'] = []
+    training_history['training_loss'] = []
+    training_history['validation_loss'] = []
+    training_history['learning_rate'] = []
+    
+    iter_now = 0
     for epoch in range(num_epochs):
         train_err = 0
         train_batches = 0
@@ -198,6 +221,7 @@ def main():
             print("Train batch {} took {:.3f}s, loss:{:.6f}".format(
                  train_batches + 1, time.time() - start_time, train_err / (train_batches + 1)))
             train_batches += 1
+            iter_now += 1
     # And a full pass over the validation data:
         val_err = 0
         val_acc = 0
@@ -218,6 +242,20 @@ def main():
         print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
         print("  validation accuracy:\t\t{:.2f} %".format(
             val_acc / val_batches * 100))
+
+        #plot loss
+        training_history['iter_training_loss'].append(train_err/train_batches)
+        training_history['iter_validation_loss'].append(val_err / val_batches)
+        training_history['learning_rate'].append(learning_rate.get_value())
+        if(epoch +1) % 1 == 0:
+            print("Creating snapshot")
+            snapshot_path_string = snapshot_root+snapshot_name+'_'+str(iter_now+1)
+            plot_loss(training_history, snapshot_path_string+'_loss.png')
+            print("Creating weight visualize")
+            print(lasagne.layers.get_all_layers(network))
+            plot_conv1_weights(lasagne.layers.get_all_layers(network)[1], snapshot_path_string + '_conv1weights.png')
+
+
 
     print("Trainning done")
     save_params(params)
