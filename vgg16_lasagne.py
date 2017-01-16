@@ -14,12 +14,13 @@ import lasagne
 import skimage.transform 
 from scipy import misc
 
-from read_trained_params import  read_params
-from read_trained_params import  save_params
+from training_process_file import read_origin_params
+from training_process_file import read_params
+from training_process_file import save_params
+from training_process_file import save_history
 
 from visualize import plot_loss
 from visualize import plot_conv1_weights
-
 
 
 
@@ -27,6 +28,8 @@ MEAN_VALUE = np.array([103.939, 116.779, 123.68], dtype="int32")   # BGR
 DEV_PATH = '/home/hs/workspace/python/ml/101_ObjectCategories'
 SERVER_PATH = '/home/oanhnt/sonnh/src/ml/101_ObjectCategories'
 TRAIN_VALID_RATIO = 0.7
+snapshot_root = 'snapshot_models/'
+
 #SAMPLE_NUMBER = 9000
 
 classes_name = []
@@ -99,29 +102,30 @@ def load_dataset():
     return X_train, y_train, X_val, y_val
 
 def build_vgg(input_var):
-    trained_params = read_params()
+    origin_params = read_origin_params();
+    training_params = read_params(snapshot_root + 'vgg16_lasagne170116085327_params')
     network = lasagne.layers.InputLayer(shape=(None, 3, 224, 224), input_var=input_var, name="input")
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1, name="conv1_1", W = trained_params[0], b = trained_params[1])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1, name="conv1_2", W = trained_params[2], b = trained_params[3])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1, name="conv1_1", W = origin_params[0], b = origin_params[1])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1, name="conv1_2", W = origin_params[2], b = origin_params[3])
     network= lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool1")
 
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 128, filter_size=(3,3), pad = 1, W = trained_params[4], b = trained_params[5])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 128, filter_size=(3,3), pad = 1, W = trained_params[6], b = trained_params[7])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 128, filter_size=(3,3), pad = 1, W = origin_params[4], b = origin_params[5])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 128, filter_size=(3,3), pad = 1, W = origin_params[6], b = origin_params[7])
     network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool2")
 
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1, W = trained_params[8], b = trained_params[9])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1, W = trained_params[10], b = trained_params[11])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1, W = trained_params[12], b = trained_params[13])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1, W = origin_params[8], b = origin_params[9])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1, W = origin_params[10], b = origin_params[11])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1, W = origin_params[12], b = origin_params[13])
     network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool3")
 
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = trained_params[14], b = trained_params[15])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = trained_params[16], b = trained_params[17])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = trained_params[18], b = trained_params[19])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = origin_params[14], b = origin_params[15])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = origin_params[16], b = origin_params[17])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = origin_params[18], b = origin_params[19])
     network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool4")
 
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = trained_params[20], b = trained_params[21])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = trained_params[22], b = trained_params[23])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = trained_params[24], b = trained_params[25])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = origin_params[20], b = origin_params[21])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = origin_params[22], b = origin_params[23])
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = origin_params[24], b = origin_params[25])
     network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool5")
 
     network = lasagne.layers.DenseLayer(
@@ -129,21 +133,23 @@ def build_vgg(input_var):
             num_units = 4096, 
             nonlinearity=lasagne.nonlinearities.rectify, 
             name = "fc6",
-            W = trained_params[26],
-            b = trained_params[27]
+            W = origin_params[26],
+            b = origin_params[27]
             ) 
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=0.5), 
             num_units = 4096, 
             nonlinearity=lasagne.nonlinearities.rectify,
             name = "fc7",
-            W = trained_params[28],
-            b = trained_params[29]
+            W = origin_params[28],
+            b = origin_params[29]
             ) 
     network = lasagne.layers.DenseLayer(
             lasagne.layers.dropout(network, p=0.5), 
             num_units = 1000, 
-            nonlinearity=lasagne.nonlinearities.softmax 
+            nonlinearity=lasagne.nonlinearities.softmax,
+            W = training_params[0],
+            b = training_params[1]
             ) 
 
     return network
@@ -174,8 +180,7 @@ def main():
 
 
     time_stamp=time.strftime("%y%m%d%H%M%S", time.localtime()) 
-    snapshot_root = 'snapshot_models/'
-    snapshot_name = 'vgg16_lasgane'+ time_stamp
+    snapshot_name = 'vgg16_lasagne'+ time_stamp
 
 
     prediction = lasagne.layers.get_output(network)
@@ -188,7 +193,7 @@ def main():
     learning_rate_init = 1e-3
     learning_rate = theano.shared(np.array(learning_rate_init, dtype=theano.config.floatX))
     updates = lasagne.updates.adam(
-            loss, params, learning_rate=1e-3)
+            loss, params, learning_rate=learning_rate_init)
 
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
     test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var)
@@ -212,8 +217,6 @@ def main():
         train_err = 0
         train_batches = 0
         start_time = time.time()
-        if(epoch != 0 and (epoch % 20) == 0):
-            save_params(params)
 
         for batch in iterate_minibatches(X_train, y_train, 200, shuffle=True):
             inputs, targets = batch
@@ -232,7 +235,7 @@ def main():
             val_err += err
             val_acc += acc
             print("Valid batch {} took {:.3f}s, loss:{:.6f}".format(
-                 val_batches+ 1, time.time() - start_time), val_err/val_batches)
+                 val_batches+ 1, time.time() - start_time, val_err/(val_batches +1)))
             val_batches += 1
 
         # Then we print the results for this epoch:
@@ -247,15 +250,16 @@ def main():
         training_history['iter_training_loss'].append(train_err/train_batches)
         training_history['iter_validation_loss'].append(val_err / val_batches)
         training_history['learning_rate'].append(learning_rate.get_value())
-        if(epoch +1) % 1 == 0:
+        #if(epoch != 0 and (epoch % 10) == 0):
+        if(epoch != 0 and (epoch % 10) == 0):
+            snapshot_path_string = snapshot_root+snapshot_name+'_'+str(epoch)+"_"+str(iter_now+1)
+            print("Save param")
+            save_params(params, snapshot_path_string+"_"+"params")
             print("Creating snapshot")
-            snapshot_path_string = snapshot_root+snapshot_name+'_'+str(iter_now+1)
             plot_loss(training_history, snapshot_path_string+'_loss.png')
             print("Creating weight visualize")
-            print(lasagne.layers.get_all_layers(network))
             plot_conv1_weights(lasagne.layers.get_all_layers(network)[1], snapshot_path_string + '_conv1weights.png')
-
-
+            print("Save training history")
 
     print("Trainning done")
     save_params(params)

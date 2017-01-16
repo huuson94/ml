@@ -37,7 +37,8 @@ def color_convert(X):
         new_image[:,:,0] = X[:,:,0]
         new_image[:,:,1] = X[:,:,0]
         new_image[:,:,2] = X[:,:,0]
-    return new_image if new_image else X
+        return new_image
+    return X
 
 def plot_conv1_weights(layer, filename="", figsize=(6,6)):
     
