@@ -36,7 +36,7 @@ classes_name = []
 
 def preprocess(img):
     # img is (channels, height, width), values are 0-255
-    img = img[::-1]  # switch to BGR
+    img = img[::-1, :, :]  # switch to BGR
     img[0] -= MEAN_VALUE[0]
     img[1] -= MEAN_VALUE[1]
     img[2] -= MEAN_VALUE[2]
@@ -48,7 +48,7 @@ def load_data_folder():
     X_val = []
     y_val = []
 
-    res_root = SERVER_PATH
+    res_root = DEV_PATH
     
     dirs = os.listdir(res_root)
 
@@ -68,7 +68,7 @@ def load_data_folder():
                 y_val.append(classes_name.index(class_name))
 
     return np.array(X_train, dtype="float32"), np.array(y_train, dtype="int32"), np.array(X_val, dtype="float32"), np.array(y_val, dtype="int32")
-
+count = 0
 def load_data_from_file(file_path, height_crop=224, width_crop=224):
     img = misc.imread(file_path)
     if(len(img.shape) == 2):
@@ -78,23 +78,19 @@ def load_data_from_file(file_path, height_crop=224, width_crop=224):
         new_arr[:,:,1] = img
         new_arr[:,:,2] = img
         img = new_arr
-
-    height, width, color = img.shape
-
-    #if height < height_crop or width < width_crop then scale
-    if(height < height_crop ):
-        img = misc.imresize(img, (height_crop, width_crop), interp='nearest')
-    if(width < width_crop):
-        img = misc.imresize(img, (height_crop, width_crop), interp='nearest')
     
-    #center crop 
     height, width, color = img.shape
-    startX = width//2 - width_crop//2
-    startY = height//2 - height_crop//2
-    cropped_img = img[startY:startY+height_crop, startX:startX+width_crop,:]
+    min_size = height if height <= width else width
+    #center crop 
+    startX = width//2 - min_size//2
+    startY = height//2 - min_size//2
+    cropped_img = img[startY:startY+min_size, startX:startX+min_size,:]
+    img = misc.imresize(img, (height_crop, width_crop), interp='nearest')
+
     #reshape to (3, 224, 224)
-    BGR_img = np.swapaxes(np.swapaxes(cropped_img,0,1),1,2)    
-    reshape_img = np.swapaxes(np.swapaxes(BGR_img,1,2),0,1).reshape((3,224,224))
+    img_021= np.swapaxes(np.swapaxes(cropped_img,0,1),1,2)    
+    reshape_img = np.swapaxes(np.swapaxes(img_021,0,1),1,2)
+
     return preprocess(reshape_img)
 
 def load_dataset():
