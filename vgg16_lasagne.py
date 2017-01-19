@@ -22,7 +22,7 @@ from training_process_file import save_history
 from visualize import plot_loss
 from visualize import plot_conv1_weights
 
-
+from modify_data import modify_sample
 
 MEAN_VALUE = np.array([103.939, 116.779, 123.68], dtype="int32")   # BGR
 DEV_PATH = '/home/hs/workspace/python/ml/101_ObjectCategories'
@@ -163,6 +163,11 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
         yield inputs[excerpt], targets[excerpt]
 
 
+def modify(inputs, number_sample):
+    rs = []
+    for input in inputs:
+        rs.append(modify_sample(input,number_sample = number_sample))
+    return rs
 
 def main():
     num_epochs = 500
@@ -171,7 +176,7 @@ def main():
     input_var = T.tensor4('inputs')
     target_var = T.ivector('targets')
     print("Building net...")
-    network = build_vgg(input_var)
+    #network = build_vgg(input_var)
     print("Create train variables")
 
 
@@ -213,10 +218,12 @@ def main():
         train_err = 0
         train_batches = 0
         start_time = time.time()
-
+        X_train = modify(X_train, (epoch + 1) * 10)
+        print(np.median(X_train))
+        exit(0)
         for batch in iterate_minibatches(X_train, y_train, 200, shuffle=True):
             inputs, targets = batch
-            train_err += train_fn(inputs, targets)
+            #train_err += train_fn(inputs, targets)
             print("Train batch {} took {:.3f}s, loss:{:.6f}".format(
                  train_batches + 1, time.time() - start_time, train_err / (train_batches + 1)))
             train_batches += 1
@@ -227,7 +234,7 @@ def main():
         val_batches = 0
         for batch in iterate_minibatches(X_val, y_val, 200, shuffle=False):
             inputs, targets = batch
-            err, acc = val_fn(inputs, targets)
+            #err, acc = val_fn(inputs, targets)
             val_err += err
             val_acc += acc
             print("Valid batch {} took {:.3f}s, loss:{:.6f}".format(
