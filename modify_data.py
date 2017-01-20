@@ -14,7 +14,7 @@ def ca_alg():
     
     U = uniform(0, 1)
     T = U - 0.5
-    S = W - T^2
+    S = W - T * T
     if(S > 0):
         Z = T * (A / S + B)
         return Z
@@ -22,10 +22,11 @@ def ca_alg():
         U = uniform(0, 1)
         U_ = uniform(0, 1)
         T = U - 0.5
-        S = 1/4 - T^2
+        S = 1/4 - T * T
         Z = T * (a / S + b)
-        if((S^2 * ((1 + Z^2 )*(H*U_ + P ) - q) + S) <= 0.5):
+        if((S * S * ((1 + Z  * Z )*(H*U_ + P ) - q) + S) <= 0.5):
             break
+    return Z
 
     
 def ea_alg():
@@ -33,6 +34,7 @@ def ea_alg():
     q = math.log(2)
     a = 5.7133631526454228
     b = 1.4142135623730950
+    b = 3.4142135623730950
     c = -1.6734053240284925
     p = 0.9802581434685472
     A = 5.6005707569738080
@@ -54,7 +56,7 @@ def ea_alg():
         U = uniform(0, 1)
         U_ = uniform(0, 1)
         Y = a / (b - U)
-        if( (U_ * H + D) * (b - U)^2 < e ^ (-Y - c)):
+        if( (U_ * H + D) * (b - U) * (b - U) < math.exp(-Y - c)):
             break
     Z = K + Y
     return Z
@@ -68,19 +70,20 @@ def na_alg():
     V = ea_alg()
     S = V + V
     W = ca_alg()
-    Z = math.sqrt(S / (1 + W^2))
+    Z = math.sqrt(S / (1 + W * W))
     Y = W*Z
     if B == 0:
         return Z, Y
     else:
         return -Z, Y
 
-def modify_sample(image, number_sample = 10, epsilon = 1):
+def modify_sample(image, number_sample = 10, epsilon = 10):
     add_values = []
     for index in range(number_sample):
-        add_values.append(np_alg()[0])
-        add_values.append(np_alg()[1])
-    mean = np.median(numpy.array(add_values))
+        na_value = na_alg()
+        add_values.append(na_value[0])
+        add_values.append(na_value[1])
+    mean = np.median(np.array(add_values))
     image += mean * epsilon
     return image
 

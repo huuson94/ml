@@ -24,7 +24,7 @@ from visualize import plot_conv1_weights
 
 from modify_data import modify_sample
 
-MEAN_VALUE = np.array([103.939, 116.779, 123.68], dtype="int32")   # BGR
+MEAN_VALUE = np.array([103.939, 116.779, 123.68], dtype="float32")   # BGR
 DEV_PATH = '/home/hs/workspace/python/ml/101_ObjectCategories'
 SERVER_PATH = '/home/oanhnt/sonnh/src/ml/101_ObjectCategories'
 TRAIN_VALID_RATIO = 0.7
@@ -48,7 +48,7 @@ def load_data_folder():
     X_val = []
     y_val = []
 
-    res_root = DEV_PATH
+    res_root = SERVER_PATH
     
     dirs = os.listdir(res_root)
 
@@ -68,9 +68,10 @@ def load_data_folder():
                 y_val.append(classes_name.index(class_name))
 
     return np.array(X_train, dtype="float32"), np.array(y_train, dtype="int32"), np.array(X_val, dtype="float32"), np.array(y_val, dtype="int32")
-count = 0
+    #return np.array(X_train[0:100], dtype="float32"), np.array(y_train[0:100], dtype="int32"), np.array(X_val[0:100], dtype="float32"), np.array(y_val[0:100], dtype="int32")
+
 def load_data_from_file(file_path, height_crop=224, width_crop=224):
-    img = misc.imread(file_path)
+    img = misc.imread(file_path).astype('float32')
     if(len(img.shape) == 2):
         height, width= img.shape
         new_arr = np.zeros((height, width, 3))
@@ -85,10 +86,10 @@ def load_data_from_file(file_path, height_crop=224, width_crop=224):
     startX = width//2 - min_size//2
     startY = height//2 - min_size//2
     cropped_img = img[startY:startY+min_size, startX:startX+min_size,:]
-    img = misc.imresize(img, (height_crop, width_crop), interp='nearest')
+    img = misc.imresize(img, (height_crop, width_crop), interp='nearest').astype('float32')
 
     #reshape to (3, 224, 224)
-    img_021= np.swapaxes(np.swapaxes(cropped_img,0,1),1,2)    
+    img_021= np.swapaxes(np.swapaxes(img,0,1),1,2)    
     reshape_img = np.swapaxes(np.swapaxes(img_021,0,1),1,2)
 
     return preprocess(reshape_img)
@@ -99,7 +100,7 @@ def load_dataset():
 
 def build_vgg(input_var):
     origin_params = read_origin_params();
-    training_params = read_params(snapshot_root + 'vgg16_lasagne170116085327_params')
+    training_params = read_params(snapshot_root+'vgg16_lasagne170116085327_params')
     network = lasagne.layers.InputLayer(shape=(None, 3, 224, 224), input_var=input_var, name="input")
     network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1, name="conv1_1", W = origin_params[0], b = origin_params[1])
     network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1, name="conv1_2", W = origin_params[2], b = origin_params[3])
@@ -166,17 +167,18 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 def modify(inputs, number_sample):
     rs = []
     for input in inputs:
-        rs.append(modify_sample(input,number_sample = number_sample))
-    return rs
+        modified_input = modify_sample(input,number_sample = number_sample)
+        rs.append(modified_input)
+    return np.array(rs, dtype="float32")
 
 def main():
-    num_epochs = 500
+    num_epochs = 1500
     print("Load dataset...") 
     X_train, y_train, X_val, y_val = load_dataset()
     input_var = T.tensor4('inputs')
     target_var = T.ivector('targets')
     print("Building net...")
-    #network = build_vgg(input_var)
+    network = build_vgg(input_var)
     print("Create train variables")
 
 
@@ -218,12 +220,11 @@ def main():
         train_err = 0
         train_batches = 0
         start_time = time.time()
+        #print(X_train.shape)
         X_train = modify(X_train, (epoch + 1) * 10)
-        print(np.median(X_train))
-        exit(0)
         for batch in iterate_minibatches(X_train, y_train, 200, shuffle=True):
             inputs, targets = batch
-            #train_err += train_fn(inputs, targets)
+            train_err += train_fn(inputs, targets)
             print("Train batch {} took {:.3f}s, loss:{:.6f}".format(
                  train_batches + 1, time.time() - start_time, train_err / (train_batches + 1)))
             train_batches += 1
@@ -234,7 +235,7 @@ def main():
         val_batches = 0
         for batch in iterate_minibatches(X_val, y_val, 200, shuffle=False):
             inputs, targets = batch
-            #err, acc = val_fn(inputs, targets)
+            err, acc = val_fn(inputs, targets)
             val_err += err
             val_acc += acc
             print("Valid batch {} took {:.3f}s, loss:{:.6f}".format(
