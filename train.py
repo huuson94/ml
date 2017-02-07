@@ -175,7 +175,7 @@ def main(model='vgg16', num_epochs=100):
     training_history['learning_rate'] = []
     
     iter_now = 0
-    batch_size = 200
+    batch_size = 256
     for epoch in range(num_epochs):
         train_err = 0
         train_batches = 0
