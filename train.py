@@ -14,8 +14,6 @@ import lasagne
 import skimage.transform 
 from scipy import misc
 
-from training_process_file import read_origin_params
-from training_process_file import read_params
 from training_process_file import save_params
 from training_process_file import save_history
 
@@ -23,6 +21,11 @@ from visualize import plot_loss
 from visualize import plot_conv1_weights
 
 from modify_data import modify_sample
+
+from build_vgg16 import build_vgg16
+from build_resnet50 import build_resnet50
+from build_lnet5 import build_lnet5
+#from build_googlenet import build_googlenet
 
 MEAN_VALUE = np.array([103.939, 116.779, 123.68], dtype="float32")   # BGR
 DEV_PATH = '/home/hs/workspace/python/ml/101_ObjectCategories'
@@ -42,7 +45,7 @@ def preprocess(img):
     img[2] -= MEAN_VALUE[2]
     return img
 
-def load_data_folder():
+def load_data_folder(height_crop, width_crop):
     X_train = []
     y_train = []
     X_val = []
@@ -61,16 +64,16 @@ def load_data_folder():
 
         for index, file in enumerate(files):
             if(index < train_sample_count_limit):
-                X_train.append(load_data_from_file(res_root + "/" + dir + "/" + file))
+                X_train.append(load_data_from_file(res_root + "/" + dir + "/" + file,height_crop=height_crop, width_crop=width_crop))
                 y_train.append(classes_name.index(class_name))
             else:
-                X_val.append(load_data_from_file(res_root + "/" + dir + "/" + file))
+                X_val.append(load_data_from_file(res_root + "/" + dir + "/" + file,height_crop=height_crop, width_crop=width_crop))
                 y_val.append(classes_name.index(class_name))
 
-    return np.array(X_train, dtype="float32"), np.array(y_train, dtype="int32"), np.array(X_val, dtype="float32"), np.array(y_val, dtype="int32")
-    #return np.array(X_train[0:100], dtype="float32"), np.array(y_train[0:100], dtype="int32"), np.array(X_val[0:100], dtype="float32"), np.array(y_val[0:100], dtype="int32")
+    #return np.array(X_train, dtype="float32"), np.array(y_train, dtype="int32"), np.array(X_val, dtype="float32"), np.array(y_val, dtype="int32")
+    return np.array(X_train[0:100], dtype="float32"), np.array(y_train[0:100], dtype="int32"), np.array(X_val[0:100], dtype="float32"), np.array(y_val[0:100], dtype="int32")
 
-def load_data_from_file(file_path, height_crop=224, width_crop=224):
+def load_data_from_file(file_path, height_crop, width_crop):
     img = misc.imread(file_path).astype('float32')
     if(len(img.shape) == 2):
         height, width= img.shape
@@ -94,62 +97,11 @@ def load_data_from_file(file_path, height_crop=224, width_crop=224):
 
     return preprocess(reshape_img)
 
-def load_dataset():
-    X_train, y_train, X_val, y_val = load_data_folder()
+def load_dataset(height_crop=224, width_crop=224):
+    print("Load dataset...") 
+    X_train, y_train, X_val, y_val = load_data_folder(height_crop=height_crop, width_crop=width_crop)
     return X_train, y_train, X_val, y_val
 
-def build_vgg(input_var):
-    origin_params = read_origin_params();
-    training_params = read_params(snapshot_root+'vgg16_lasagne170116085327_params')
-    network = lasagne.layers.InputLayer(shape=(None, 3, 224, 224), input_var=input_var, name="input")
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1, name="conv1_1", W = origin_params[0], b = origin_params[1])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 64, filter_size=(3,3), pad = 1, name="conv1_2", W = origin_params[2], b = origin_params[3])
-    network= lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool1")
-
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 128, filter_size=(3,3), pad = 1, W = origin_params[4], b = origin_params[5])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 128, filter_size=(3,3), pad = 1, W = origin_params[6], b = origin_params[7])
-    network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool2")
-
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1, W = origin_params[8], b = origin_params[9])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1, W = origin_params[10], b = origin_params[11])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 256, filter_size=(3,3), pad = 1, W = origin_params[12], b = origin_params[13])
-    network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool3")
-
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = origin_params[14], b = origin_params[15])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = origin_params[16], b = origin_params[17])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = origin_params[18], b = origin_params[19])
-    network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool4")
-
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = origin_params[20], b = origin_params[21])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = origin_params[22], b = origin_params[23])
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 512, filter_size=(3,3), pad = 1, W = origin_params[24], b = origin_params[25])
-    network = lasagne.layers.MaxPool2DLayer(network, pool_size = 2, stride=2, name="pool5")
-
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=0.5), 
-            num_units = 4096, 
-            nonlinearity=lasagne.nonlinearities.rectify, 
-            name = "fc6",
-            W = origin_params[26],
-            b = origin_params[27]
-            ) 
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=0.5), 
-            num_units = 4096, 
-            nonlinearity=lasagne.nonlinearities.rectify,
-            name = "fc7",
-            W = origin_params[28],
-            b = origin_params[29]
-            ) 
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=0.5), 
-            num_units = 1000, 
-            nonlinearity=lasagne.nonlinearities.softmax,
-            W = training_params[0],
-            b = training_params[1]
-            ) 
-
-    return network
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
     assert len(inputs) == len(targets)
@@ -171,19 +123,25 @@ def modify(inputs, number_sample):
         rs.append(modified_input)
     return np.array(rs, dtype="float32")
 
-def main():
-    num_epochs = 1500
-    print("Load dataset...") 
-    X_train, y_train, X_val, y_val = load_dataset()
+def main(model='vgg16', num_epochs=100):
     input_var = T.tensor4('inputs')
     target_var = T.ivector('targets')
     print("Building net...")
-    network = build_vgg(input_var)
+    if(model == 'vgg16'):
+        X_train, y_train, X_val, y_val = load_dataset(224, 224)
+        network = build_vgg16(input_var)
+    if(model == 'resnet50'):
+        network = build_resnet50(input_var)
+    if(model == 'googlenet'):
+        pass
+        #network = build_googlenet(input_var)
+    if(model == 'lnet5'):
+        X_train, y_train, X_val, y_val = load_dataset(28, 28)
+        network = build_lnet5(input_var)
     print("Create train variables")
 
-
     time_stamp=time.strftime("%y%m%d%H%M%S", time.localtime()) 
-    snapshot_name = 'vgg16_lasagne'+ time_stamp
+    snapshot_name = 'model'+ time_stamp
 
 
     prediction = lasagne.layers.get_output(network)
@@ -216,13 +174,14 @@ def main():
     training_history['learning_rate'] = []
     
     iter_now = 0
+    batch_size = 96
     for epoch in range(num_epochs):
         train_err = 0
         train_batches = 0
         start_time = time.time()
         #print(X_train.shape)
         X_train = modify(X_train, (epoch + 1) * 10)
-        for batch in iterate_minibatches(X_train, y_train, 200, shuffle=True):
+        for batch in iterate_minibatches(X_train, y_train, batch_size, shuffle=True):
             inputs, targets = batch
             train_err += train_fn(inputs, targets)
             print("Train batch {} took {:.3f}s, loss:{:.6f}".format(
@@ -233,7 +192,7 @@ def main():
         val_err = 0
         val_acc = 0
         val_batches = 0
-        for batch in iterate_minibatches(X_val, y_val, 200, shuffle=False):
+        for batch in iterate_minibatches(X_val, y_val, batch_size , shuffle=False):
             inputs, targets = batch
             err, acc = val_fn(inputs, targets)
             val_err += err
@@ -270,5 +229,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    kwargs = {}
+    if len(sys.argv) > 1:
+       kwargs['model'] = sys.argv[1]
+    if len(sys.argv) > 2:
+        kwargs['num_epochs'] = int(sys.argv[2])
+    main(**kwargs)
 

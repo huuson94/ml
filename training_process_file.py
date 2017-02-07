@@ -1,7 +1,7 @@
 import pprint, pickle
 
-def read_origin_params():
-    pkl_file = open("vgg16.pkl", 'rb')
+def read_origin_params(model):
+    pkl_file = open(model+ ".pkl", 'rb')
     data = pickle.load(pkl_file)
     pkl_file.close()
     return data['param values']
