@@ -70,8 +70,8 @@ def load_data_folder(height_crop, width_crop):
                 X_val.append(load_data_from_file(res_root + "/" + dir + "/" + file,height_crop=height_crop, width_crop=width_crop))
                 y_val.append(classes_name.index(class_name))
 
-    #return np.array(X_train, dtype="float32"), np.array(y_train, dtype="int32"), np.array(X_val, dtype="float32"), np.array(y_val, dtype="int32")
-    return np.array(X_train[0:100], dtype="float32"), np.array(y_train[0:100], dtype="int32"), np.array(X_val[0:100], dtype="float32"), np.array(y_val[0:100], dtype="int32")
+    return np.array(X_train, dtype="float32"), np.array(y_train, dtype="int32"), np.array(X_val, dtype="float32"), np.array(y_val, dtype="int32")
+    #return np.array(X_train[0:100], dtype="float32"), np.array(y_train[0:100], dtype="int32"), np.array(X_val[0:100], dtype="float32"), np.array(y_val[0:100], dtype="int32")
 
 def load_data_from_file(file_path, height_crop, width_crop):
     img = misc.imread(file_path).astype('float32')
@@ -128,10 +128,11 @@ def main(model='vgg16', num_epochs=100):
     target_var = T.ivector('targets')
     print("Building net...")
     if(model == 'vgg16'):
-        X_train, y_train, X_val, y_val = load_dataset(224, 224)
         network = build_vgg16(input_var)
     if(model == 'resnet50'):
         network = build_resnet50(input_var)
+        network = network['prob']
+        X_train, y_train, X_val, y_val = load_dataset(224, 224)
     if(model == 'googlenet'):
         pass
         #network = build_googlenet(input_var)
@@ -141,7 +142,7 @@ def main(model='vgg16', num_epochs=100):
     print("Create train variables")
 
     time_stamp=time.strftime("%y%m%d%H%M%S", time.localtime()) 
-    snapshot_name = 'model'+ time_stamp
+    snapshot_name = model + time_stamp
 
 
     prediction = lasagne.layers.get_output(network)
@@ -174,7 +175,7 @@ def main(model='vgg16', num_epochs=100):
     training_history['learning_rate'] = []
     
     iter_now = 0
-    batch_size = 96
+    batch_size = 200
     for epoch in range(num_epochs):
         train_err = 0
         train_batches = 0

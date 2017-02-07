@@ -151,8 +151,8 @@ def build_residual_block(incoming_layer, ratio_n_filter=1.0, ratio_size=1.0, has
 
 def build_resnet50(input_var):
     net = {}
-    #net['input'] = InputLayer(shape=(None, 3, 224, 224), input_var=input_var, name="input")
-    net['input'] = InputLayer((None, 3, 224, 224))
+    net['input'] = InputLayer(shape=(None, 3, 224, 224), input_var=input_var, name="input")
+    #net['input'] = InputLayer((None, 3, 224, 224))
     sub_net, parent_layer_name = build_simple_block(
         net['input'], ['conv1', 'bn_conv1', 'conv1_relu'],
         64, 7, 2, 3, use_bias=True)
@@ -198,5 +198,4 @@ def build_resnet50(input_var):
     net['fc1000'] = DenseLayer(net['pool5'], num_units=1000, nonlinearity=None)
     net['prob'] = NonlinearityLayer(net['fc1000'], nonlinearity=softmax)
 
-    print(lasagne.layers.get_all_layers(net))
     return net
