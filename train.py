@@ -123,7 +123,7 @@ def modify(inputs, number_sample):
         rs.append(modified_input)
     return np.array(rs, dtype="float32")
 
-def main(model='vgg16', num_epochs=100):
+def main(model='vgg16', num_epochs=100, optim = 'momentum'):
     input_var = T.tensor4('inputs')
     target_var = T.ivector('targets')
     print("Building net...")
@@ -142,7 +142,7 @@ def main(model='vgg16', num_epochs=100):
     print("Create train variables")
 
     time_stamp=time.strftime("%y%m%d%H%M%S", time.localtime()) 
-    snapshot_name = model + time_stamp
+    snapshot_name = model + "/" + time_stamp
 
 
     prediction = lasagne.layers.get_output(network)
@@ -154,8 +154,17 @@ def main(model='vgg16', num_epochs=100):
 
     learning_rate_init = 1e-3
     learning_rate = theano.shared(np.array(learning_rate_init, dtype=theano.config.floatX))
-    updates = lasagne.updates.adam(
-            loss, params, learning_rate=learning_rate_init)
+
+    
+    if optim=='momentum':
+        updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=learning_rate, momentum=0.9) 
+    elif optim=='rmsprop':
+        updates = lasagne.updates.rmsprop(loss, params, learning_rate=learning_rate, rho=0.9, epsilon=1e-06) 
+    elif optim=='adam':
+        updates = lasagne.updates.adam(
+        loss, params, learning_rate=learning_rate, beta1=0.9, beta2=0.999, epsilon=1e-08)
+    elif optim=='adagrad':
+        updates = lasagne.updates.adagrad(loss, params, learning_rate=learning_rate, epsilon=1e-06)
 
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
     test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var)
@@ -175,6 +184,7 @@ def main(model='vgg16', num_epochs=100):
     training_history['learning_rate'] = []
     
     iter_now = 0
+    #batch_size = 32
     batch_size = 256
     for epoch in range(num_epochs):
         train_err = 0
@@ -214,14 +224,14 @@ def main(model='vgg16', num_epochs=100):
         training_history['iter_training_loss'].append(train_err/train_batches)
         training_history['iter_validation_loss'].append(val_err / val_batches)
         training_history['learning_rate'].append(learning_rate.get_value())
+        if(True):
         #if(epoch != 0 and (epoch % 10) == 0):
-        if(epoch != 0 and (epoch % 10) == 0):
             snapshot_path_string = snapshot_root+snapshot_name+'_'+str(epoch)+"_"+str(iter_now+1)
-            print("Save param")
+            print("Save param: " + snapshot_path_string+"_"+"params")
             save_params(params, snapshot_path_string+"_"+"params")
-            print("Creating snapshot")
+            print("Creating snapshot: " + snapshot_path_string+'_loss.png')
             plot_loss(training_history, snapshot_path_string+'_loss.png')
-            print("Creating weight visualize")
+            print("Creating weight visualize: " + snapshot_path_string + '_conv1weights.png')
             plot_conv1_weights(lasagne.layers.get_all_layers(network)[1], snapshot_path_string + '_conv1weights.png')
             print("Save training history")
 
@@ -235,5 +245,7 @@ if __name__ == '__main__':
        kwargs['model'] = sys.argv[1]
     if len(sys.argv) > 2:
         kwargs['num_epochs'] = int(sys.argv[2])
+    if len(sys.argv) > 3:
+        kwargs['optim'] = sys.argv[3]
     main(**kwargs)
 

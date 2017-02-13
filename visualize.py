@@ -20,7 +20,8 @@ def plot_loss(training_history, filename=""):
     plt.plot(valid_loss, label='valid loss (epoch)')
     plt.xlabel('iter')
     plt.ylabel('loss')
-    plt.ylim(0,3) # !
+    ymax = max(training_history['iter_training_loss'] + training_history['iter_validation_loss']) * 1.2
+    plt.ylim(0,ymax) # !
     plt.legend(loc='best')
 
     if len(filename)>0:
